@@ -2,10 +2,8 @@
 %bcond check 1
 %bcond rocm 1
 
-# Only tested on x86_64:
-ExclusiveArch:  x86_64
-
 %global debug_package %{nil}
+
 
 # https://github.com/ollama/ollama
 %global goipath         github.com/ollama/ollama
@@ -47,6 +45,9 @@ BuildRequires:  rocminfo
 Requires:       hipblas
 Requires:       rocblas
 %endif
+
+# Only tested on x86_64:
+ExcludeArch:    ppc64le s390x aarch64
 
 %description %{common_description}
 
