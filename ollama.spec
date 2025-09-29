@@ -6,8 +6,8 @@
 %bcond rocm 0
 %endif
 
-# build problems on aarch64
-ExcludeArch:    aarch64
+# build problems on aarch64, ppc64le and s390x
+ExcludeArch:    aarch64 ppc64le s390x
 
 # Build the next version of ollama
 %bcond next 0
