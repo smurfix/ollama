@@ -1,0 +1,24 @@
+From 0e98e7e19db1b477e9a1a77cbe588f83fea9883f Mon Sep 17 00:00:00 2001
+From: Tom Rix <Tom.Rix@amd.com>
+Date: Wed, 12 Nov 2025 16:32:30 -0800
+Subject: [PATCH] ollama handle load
+
+---
+ runner/llamarunner/runner.go | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/runner/llamarunner/runner.go b/runner/llamarunner/runner.go
+index 87b43256abff..98a9246d6ac7 100644
+--- a/runner/llamarunner/runner.go
++++ b/runner/llamarunner/runner.go
+@@ -935,6 +935,7 @@ func Execute(args []string) error {
+ 
+ 	mux := http.NewServeMux()
+ 	mux.HandleFunc("POST /load", server.load)
++	mux.HandleFunc("/load", server.load)
+ 	mux.HandleFunc("/embedding", server.embeddings)
+ 	mux.HandleFunc("/completion", server.completion)
+ 	mux.HandleFunc("/health", server.health)
+-- 
+2.51.0
+
