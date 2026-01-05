@@ -1,0 +1,18 @@
+[archive]
+
+[licensing]
+detector = "askalono"
+[[licensing.licenses]]
+path = "vendor/gopkg.in/yaml.v3/LICENSE"
+sha256sum = "d18f6323b71b0b768bb5e9616e36da390fbd39369a81807cca352de4e4e6aa0b"
+expression = "MIT AND (MIT AND Apache-2.0)"
+
+[[licensing.licenses]]
+path = "vendor/github.com/emirpasic/gods/v2/LICENSE"
+sha256sum = "871b440e9b348d6b2485c72e15f1d18f4cf8ee7bb424cbcd854b6a4a772b61d8"
+expression = "BSD-2-Clause AND ISC"
+
+[[licensing.licenses]]
+path = "vendor/github.com/apache/arrow/go/arrow/LICENSE.txt"
+sha256sum = "b9bb118a7b522be9463470835c0a50451255b4e8dd350465c366a1656128f622"
+expression = "(Apache-2.0 AND BSD-3-Clause) AND BSD-3-Clause AND CC0-1.0 AND (LicenseRef-scancode-public-domain AND MIT) AND Apache-2.0 AND BSL-1.0 AND (BSD-2-Clause AND BSD-3-Clause) AND MIT AND (BSL-1.0 AND BSD-2-Clause) AND BSD-2-Clause AND ZPL-2.1 AND LicenseRef-scancode-protobuf AND NCSA AND (CC-BY-3.0 AND MIT) AND (CC-BY-4.0 AND LicenseRef-scancode-public-domain) AND NTP AND Zlib AND OpenSSL AND (BSD-3-Clause AND BSD-2-Clause) AND (BSD-2-Clause AND Zlib)"
