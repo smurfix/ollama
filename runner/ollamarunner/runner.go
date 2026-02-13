@@ -1389,6 +1389,7 @@ func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	startDevices := time.Now()
 	infos := m.Backend().BackendDevices()
 	slog.Debug("gathering device infos took", "duration", time.Since(startDevices))
+	slog.Info("backend devices discovered", "count", len(infos), "devices", infos)
 	if err := json.NewEncoder(w).Encode(&infos); err != nil {
 		http.Error(w, fmt.Sprintf("failed to encode response: %v", err), http.StatusInternalServerError)
 	}

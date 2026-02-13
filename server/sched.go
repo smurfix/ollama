@@ -174,11 +174,14 @@ func (s *Scheduler) processPending(ctx context.Context) {
 					// Either no models are loaded or below envconfig.MaxRunners
 					// Get a refreshed GPU list
 					var gpus []ml.DeviceInfo
+					slog.Info("checking NumGPU setting", "NumGPU", pending.opts.NumGPU)
 					if pending.opts.NumGPU == 0 {
+						slog.Info("NumGPU is 0, skipping GPU discovery")
 						gpus = []ml.DeviceInfo{}
 					} else {
 						logutil.Trace("refreshing GPU list", "model", pending.model.ModelPath)
 						gpus = s.getGpuFn(ctx, runnersSnapshot)
+						slog.Info("getGpuFn returned", "gpus_count", len(gpus))
 					}
 					logutil.Trace("refreshing system information", "model", pending.model.ModelPath)
 					systemInfo := s.getSystemInfoFn()
@@ -225,6 +228,7 @@ func (s *Scheduler) processPending(ctx context.Context) {
 					// Update free memory from currently loaded models
 					logutil.Trace("updating free space", "gpu_count", len(gpus), "model", pending.model.ModelPath)
 					s.updateFreeSpace(gpus)
+					slog.Info("about to load model", "gpus_count", len(gpus), "gpus", gpus, "loadedCount", loadedCount)
 
 					if loadedCount == 0 {
 						// No models loaded. Load the model but prefer the best fit.
