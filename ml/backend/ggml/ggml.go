@@ -48,10 +48,17 @@ var initDevices = sync.OnceFunc(func() {
 	ggml.OnceLoad()
 
 	backends = make(map[C.ggml_backend_dev_t]C.ggml_backend_t)
-	for i := range C.ggml_backend_dev_count() {
+	devCount := C.ggml_backend_dev_count()
+	slog.Debug("ggml backend device count", "count", devCount)
+	for i := range devCount {
 		d := C.ggml_backend_dev_get(i)
 
-		switch C.ggml_backend_dev_type(d) {
+		devType := C.ggml_backend_dev_type(d)
+		props := C.struct_ggml_backend_dev_props{}
+		C.ggml_backend_dev_get_props(d, &props)
+		slog.Debug("ggml backend device", "index", i, "type", devType, "name", C.GoString(props.name), "library", C.GoString(props.library))
+
+		switch devType {
 		case C.GGML_BACKEND_DEVICE_TYPE_CPU:
 			if len(cpus) == 0 {
 				// only the first cpu device should be used
@@ -66,6 +73,7 @@ var initDevices = sync.OnceFunc(func() {
 
 		backends[d] = C.ggml_backend_dev_init(d, nil)
 	}
+	slog.Info("ggml devices initialized", "cpus", len(cpus), "accels", len(accels), "gpus", len(gpus))
 })
 
 type layerDevice struct {
