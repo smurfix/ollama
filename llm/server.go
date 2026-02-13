@@ -371,6 +371,36 @@ func StartRunner(ollamaEngine bool, modelPath string, gpuLibs []string, out io.W
 
 	cmd.Env = os.Environ()
 
+	// Remove GPU visibility environment variables if they're empty strings
+	// Empty strings can prevent GPU detection, whereas unset variables allow detection
+	gpuVisibilityVars := []string{
+		"CUDA_VISIBLE_DEVICES",
+		"HIP_VISIBLE_DEVICES",
+		"ROCR_VISIBLE_DEVICES",
+		"GGML_VK_VISIBLE_DEVICES",
+		"GPU_DEVICE_ORDINAL",
+	}
+	cleanedEnv := make([]string, 0, len(cmd.Env))
+	for _, env := range cmd.Env {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) == 2 {
+			isGPUVar := false
+			for _, gpuVar := range gpuVisibilityVars {
+				if strings.EqualFold(parts[0], gpuVar) {
+					isGPUVar = true
+					break
+				}
+			}
+			// Keep the var if it's not a GPU var, or if it has a non-empty value
+			if !isGPUVar || parts[1] != "" {
+				cleanedEnv = append(cleanedEnv, env)
+			}
+		} else {
+			cleanedEnv = append(cleanedEnv, env)
+		}
+	}
+	cmd.Env = cleanedEnv
+
 	if out != nil {
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
@@ -922,6 +952,7 @@ func uniqueDeviceIDs(gpuLayers ml.GPULayersList) []ml.DeviceID {
 // - Assigning layers
 // - Ensuring that we don't exceed limits, such as requirements about partial offloading or system memory
 func (s *llmServer) createLayout(systemInfo ml.SystemInfo, systemGPUs []ml.DeviceInfo, memory *ml.BackendMemory, requireFull bool, backoff float32) (ml.GPULayersList, error) {
+	slog.Info("createLayout called", "systemGPUs_count", len(systemGPUs), "systemGPUs", systemGPUs)
 	if memory == nil {
 		memory = &ml.BackendMemory{CPU: ml.DeviceMemory{
 			Weights: make([]uint64, s.totalLayers),
@@ -929,8 +960,10 @@ func (s *llmServer) createLayout(systemInfo ml.SystemInfo, systemGPUs []ml.Devic
 		}}
 	}
 	gpuLayers, layers := s.buildLayout(systemGPUs, memory, requireFull, backoff)
+	slog.Info("buildLayout returned", "gpuLayers", gpuLayers, "gpuLayers_sum", gpuLayers.Sum())
 	err := s.verifyLayout(systemInfo, systemGPUs, memory, requireFull, gpuLayers, layers)
 	if err != nil {
+		slog.Warn("verifyLayout failed", "error", err)
 		return nil, err
 	}
 	return gpuLayers, nil
