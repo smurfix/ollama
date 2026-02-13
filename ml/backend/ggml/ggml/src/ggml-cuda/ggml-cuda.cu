@@ -78,6 +78,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 static_assert(sizeof(half) == sizeof(ggml_fp16_t), "wrong fp16 size");
@@ -272,9 +273,12 @@ static ggml_cuda_device_info ggml_cuda_init() {
             GGML_LOG_INFO("%s: initializing rocBLAS on device %d\n", __func__, id);
             CUDA_CHECK(cudaSetDevice(id));
             // rocblas_initialize will SIGABRT if the GPU isn't supported
+            GGML_LOG_INFO("%s: rocBLAS initialing 2 on device %d\n", __func__, id);
             rocblas_initialize();
             GGML_LOG_INFO("%s: rocBLAS initialized on device %d\n", __func__, id);
         }
+        else
+            GGML_LOG_INFO("%s: I see rocBLAS on device %d\n", __func__, id);
 #endif
 
 #if defined(GGML_USE_VMM)
