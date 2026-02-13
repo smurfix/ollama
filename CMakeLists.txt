@@ -124,6 +124,13 @@ if(CMAKE_HIP_COMPILER)
 
     if(NOT AMDGPU_TARGETS)
         find_package(hip REQUIRED)
+        # ROCm uses GPU_TARGETS (AMDGPU_TARGETS is deprecated)
+        # Copy GPU_TARGETS to AMDGPU_TARGETS for backward compatibility
+        if(GPU_TARGETS AND NOT AMDGPU_TARGETS)
+            set(AMDGPU_TARGETS ${GPU_TARGETS})
+        elseif(GPU_BUILD_TARGETS AND NOT AMDGPU_TARGETS)
+            set(AMDGPU_TARGETS ${GPU_BUILD_TARGETS})
+        endif()
         list(FILTER AMDGPU_TARGETS INCLUDE REGEX "^gfx(94[012]|101[02]|1030|110[012]|115[0-9]|120[01])$")
     endif()
 
