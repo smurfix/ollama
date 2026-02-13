@@ -543,7 +543,12 @@ func (d DeviceInfo) NeedsInitValidation() bool {
 
 // Set the init validation environment variable
 func (d DeviceInfo) AddInitValidation(env map[string]string) {
-	env["GGML_CUDA_INIT"] = "1" // force deep initialization to trigger crash on unsupported GPUs
+	// GGML_CUDA_INIT forces deep initialization to trigger crash on unsupported GPUs
+	// However, on ROCm this can cause rocblas_initialize() to hang on some systems
+	// so we skip it for ROCm devices
+	if d.Library != "ROCm" {
+		env["GGML_CUDA_INIT"] = "1"
+	}
 }
 
 // PreferredLibrary returns true if this library is preferred over the other input
