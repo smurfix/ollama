@@ -6,6 +6,7 @@
 %else
 %bcond rocm 0
 %endif
+%bcond vulkan 0
 
 # bundled GGML sources are missing ppc64le and s390x
 ExcludeArch:    ppc64le s390x
@@ -54,9 +55,13 @@ BuildRequires:  rocm-runtime-devel
 BuildRequires:  rocm-hip-devel
 BuildRequires:  rocm-rpm-macros
 BuildRequires:  rocminfo
-
 Requires:       hipblas
 Requires:       rocblas
+%endif
+
+%if %{with vulkan}
+BuildRequires:  vulkan-loader-devel
+BuildRequires:  glslc
 %endif
 
 %if %{with systemd}
@@ -108,7 +113,7 @@ export LDFLAGS=
 %cmake_install
 
 # remove copies of system libraries
-runtime_removal="hipblas rocblas amdhip64 rocsolver amd_comgr hsa-runtime64 rocsparse tinfo rocprofiler-register drm drm_amdgpu numa elf"
+runtime_removal="hipblas rocblas amdhip64 rocsolver amd_comgr hsa-runtime64 rocsparse tinfo rocprofiler-register drm drm_amdgpu numa elf vulkan"
 for rr in $runtime_removal; do
     rm -rf %{buildroot}%{_prefix}/lib/ollama/lib${rr}*
 done
@@ -168,6 +173,10 @@ install -m 0755 -vp %{gobuilddir}/bin/* %{buildroot}%{_bindir}/
 
 %if %{with rocm}
 %{_prefix}/lib/ollama/libggml-hip.so
+%endif
+
+%if %{with vulkan}
+%{_prefix}/lib/ollama/libggml-vulkan.so
 %endif
 
 %if %{with systemd}
