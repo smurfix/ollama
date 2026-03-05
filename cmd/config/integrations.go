@@ -59,6 +59,7 @@ var integrations = map[string]Runner{
 	"droid":    &Droid{},
 	"opencode": &OpenCode{},
 	"openclaw": &Openclaw{},
+	"crush":    &Crush{},
 	"pi":       &Pi{},
 }
 
@@ -894,6 +895,7 @@ Supported integrations:
   droid     Droid
   opencode  OpenCode
   openclaw  OpenClaw (aliases: clawdbot, moltbot)
+  crush     Crush
   pi        Pi
 
 Examples:
