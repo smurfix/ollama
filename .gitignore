@@ -1,9 +1,4 @@
-/ollama-0.4.4.tar.gz
-/ollama-0.5.9.tar.gz
-/ollama-0.9.4.tar.gz
-/ollama-0.12.3.tar.gz
-/ollama-0.12.10.tar.gz
-/ollama-0.12.11.tar.gz
-/ollama-0.12.11-vendor.tar.bz2
-/ollama-0.15.6.tar.gz
-/ollama-0.15.6-vendor.tar.bz2
+/*-vendor.tar.bz2
+/*-build/
+/git/
+/.build-*.log
