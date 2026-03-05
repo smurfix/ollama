@@ -55,18 +55,19 @@ type registryOptions struct {
 }
 
 type Model struct {
-	Name           string `json:"name"`
-	Config         model.ConfigV2
-	ShortName      string
-	ModelPath      string
-	ParentModel    string
-	AdapterPaths   []string
-	ProjectorPaths []string
-	System         string
-	License        []string
-	Digest         string
-	Options        map[string]any
-	Messages       []api.Message
+	Name            string `json:"name"`
+	Config          model.ConfigV2
+	ShortName       string
+	ModelPath       string
+	ExtraModelPaths []string
+	ParentModel     string
+	AdapterPaths    []string
+	ProjectorPaths  []string
+	System          string
+	License         []string
+	Digest          string
+	Options         map[string]any
+	Messages        []api.Message
 
 	Template *template.Template
 }
@@ -196,6 +197,13 @@ func (m *Model) String() string {
 		Args: m.ModelPath,
 	})
 
+	for _, extraModels := range m.ExtraModelPaths {
+		modelfile.Commands = append(modelfile.Commands, parser.Command{
+			Name: "model",
+			Args: extraModels,
+		})
+	}
+
 	for _, adapter := range m.AdapterPaths {
 		modelfile.Commands = append(modelfile.Commands, parser.Command{
 			Name: "adapter",
@@ -303,6 +311,8 @@ func GetModel(name string) (*Model, error) {
 		}
 	}
 
+	readMainModelFlag := false
+
 	for _, layer := range mf.Layers {
 		filename, err := manifest.BlobsPath(layer.Digest)
 		if err != nil {
@@ -311,8 +321,13 @@ func GetModel(name string) (*Model, error) {
 
 		switch layer.MediaType {
 		case "application/vnd.ollama.image.model":
-			m.ModelPath = filename
-			m.ParentModel = layer.From
+			if !readMainModelFlag {
+				m.ModelPath = filename
+				m.ParentModel = layer.From
+				readMainModelFlag = true
+			} else {
+				m.ExtraModelPaths = append(m.ExtraModelPaths, filename)
+			}
 		case "application/vnd.ollama.image.embed":
 			// Deprecated in versions  > 0.1.2
 			// TODO: remove this warning in a future version
