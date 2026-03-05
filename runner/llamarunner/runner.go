@@ -990,6 +990,7 @@ func Execute(args []string) error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /load", server.load)
+	mux.HandleFunc("/load", server.load)
 	mux.HandleFunc("/embedding", server.embeddings)
 	mux.HandleFunc("/completion", server.completion)
 	mux.HandleFunc("/health", server.health)
