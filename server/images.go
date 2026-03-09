@@ -384,6 +384,39 @@ func GetModel(name string) (*Model, error) {
 		}
 	}
 
+	// If no template layer was found in the manifest (e.g. sharded HF models
+	// whose manifest we synthesise without a config/template blob), try to
+	// auto-detect the chat template from the GGUF metadata embedded in the
+	// first model shard.  This mirrors what detectChatTemplate does during
+	// model creation.
+	if m.Template == template.DefaultTemplate && m.ModelPath != "" {
+		if f, err := gguf.Open(m.ModelPath); err == nil {
+			defer f.Close()
+			if chatTmpl := f.KeyValue("tokenizer.chat_template").String(); chatTmpl != "" {
+				if named, err := template.Named(chatTmpl); err == nil {
+					slog.Debug("auto-detected chat template from GGUF metadata", "template", named.Name)
+					if t, err := template.Parse(string(named.Bytes)); err == nil {
+						m.Template = t
+					}
+					if named.Parameters != nil && len(named.Parameters.Stop) > 0 {
+						if m.Options == nil {
+							m.Options = make(map[string]any)
+						}
+						// Only set stop tokens if they haven't been set already
+						// (e.g. by a params layer).
+						if _, ok := m.Options["stop"]; !ok {
+							stops := make([]any, len(named.Parameters.Stop))
+							for i, s := range named.Parameters.Stop {
+								stops[i] = s
+							}
+							m.Options["stop"] = stops
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return m, nil
 }
 

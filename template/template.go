@@ -88,6 +88,17 @@ func Named(s string) (*named, error) {
 		return template, nil
 	}
 
+	// Pattern-based fallback for templates that are too long or complex for
+	// Levenshtein matching (e.g. Qwen3 with full tool-calling / thinking
+	// support which is 4 000+ chars).  Match on distinguishing token sets.
+	if strings.Contains(s, "<|im_start|>") && strings.Contains(s, "<|im_end|>") {
+		for _, t := range templates {
+			if t.Name == "chatml" {
+				return t, nil
+			}
+		}
+	}
+
 	return nil, errors.New("no matching template found")
 }
 
