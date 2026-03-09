@@ -834,6 +834,12 @@ func pullModelManifest(ctx context.Context, n model.Name, regOpts *registryOptio
 	headers.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
 	resp, err := makeRequestWithRetry(ctx, http.MethodGet, requestURL, headers, nil, regOpts)
 	if err != nil {
+		// HuggingFace rejects sharded-GGUF manifest requests for clients it
+		// doesn't yet recognise as shard-capable.  Fall back to constructing
+		// the manifest ourselves via the HF Hub REST API.
+		if strings.Contains(err.Error(), "sharded GGUF") && isHFHost(n.Host) {
+			return pullHFShardedManifest(ctx, n, regOpts)
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -844,6 +850,103 @@ func pullModelManifest(ctx context.Context, n model.Name, regOpts *registryOptio
 	}
 
 	return &m, err
+}
+
+// isHFHost reports whether host is one of the HuggingFace registry hostnames.
+func isHFHost(host string) bool {
+	return host == "hf.co" || host == "huggingface.co"
+}
+
+// hfSibling is a single entry from the HuggingFace Hub /api/models siblings list.
+type hfSibling struct {
+	Rfilename string `json:"rfilename"`
+	LFS       *struct {
+		SHA256 string `json:"sha256"`
+		Size   int64  `json:"size"`
+	} `json:"lfs"`
+}
+
+// pullHFShardedManifest queries the HuggingFace Hub REST API to retrieve the
+// per-shard LFS SHA-256 digests and sizes for a sharded GGUF tag, then
+// assembles a synthetic manifest whose layers match the standard OCI blob
+// layout so that the regular blob-download path can fetch every shard.
+func pullHFShardedManifest(ctx context.Context, n model.Name, regOpts *registryOptions) (*manifest.Manifest, error) {
+	// Always contact the canonical HF API host regardless of whether the user
+	// typed "hf.co" or "huggingface.co".
+	apiURL := &url.URL{
+		Scheme: "https",
+		Host:   "huggingface.co",
+		Path:   "/api/models/" + n.DisplayNamespaceModel(),
+	}
+	q := apiURL.Query()
+	q.Set("blobs", "true")
+	apiURL.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("hf sharded manifest: %w", err)
+	}
+	req.Header.Set("User-Agent", fmt.Sprintf("ollama/%s (%s %s) Go/%s", version.Version, runtime.GOARCH, runtime.GOOS, runtime.Version()))
+	if regOpts != nil && regOpts.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+regOpts.Token)
+	} else if regOpts != nil && regOpts.Username != "" {
+		req.SetBasicAuth(regOpts.Username, regOpts.Password)
+	}
+
+	client := &http.Client{}
+	apiResp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("hf sharded manifest: %w", err)
+	}
+	defer apiResp.Body.Close()
+
+	if apiResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(apiResp.Body)
+		return nil, fmt.Errorf("hf sharded manifest: %d: %s", apiResp.StatusCode, body)
+	}
+
+	var modelInfo struct {
+		Siblings []hfSibling `json:"siblings"`
+	}
+	if err := json.NewDecoder(apiResp.Body).Decode(&modelInfo); err != nil {
+		return nil, fmt.Errorf("hf sharded manifest: decode: %w", err)
+	}
+
+	// Collect shards: files under the "<tag>/" directory prefix, in order.
+	prefix := n.Tag + "/"
+	var shards []hfSibling
+	for _, s := range modelInfo.Siblings {
+		if strings.HasPrefix(s.Rfilename, prefix) &&
+			strings.HasSuffix(s.Rfilename, ".gguf") &&
+			s.LFS != nil && s.LFS.SHA256 != "" {
+			shards = append(shards, s)
+		}
+	}
+	if len(shards) == 0 {
+		return nil, fmt.Errorf("hf sharded manifest: no GGUF shards found for tag %q in %s", n.Tag, n.DisplayNamespaceModel())
+	}
+	slices.SortFunc(shards, func(a, b hfSibling) int {
+		return strings.Compare(a.Rfilename, b.Rfilename)
+	})
+
+	// Build the layer list: one model layer per shard, in ascending order.
+	layers := make([]manifest.Layer, len(shards))
+	for i, s := range shards {
+		layers[i] = manifest.Layer{
+			MediaType: "application/vnd.ollama.image.model",
+			Digest:    "sha256:" + s.LFS.SHA256,
+			Size:      s.LFS.Size,
+		}
+	}
+
+	slog.Info("assembling sharded GGUF manifest from HuggingFace Hub API",
+		"model", n.DisplayNamespaceModel(), "tag", n.Tag, "shards", len(shards))
+
+	return &manifest.Manifest{
+		SchemaVersion: 2,
+		MediaType:     "application/vnd.docker.distribution.manifest.v2+json",
+		Layers:        layers,
+	}, nil
 }
 
 // GetSHA256Digest returns the SHA256 hash of a given buffer and returns it, and the size of buffer
